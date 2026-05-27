@@ -1,0 +1,50 @@
+{
+  "accessToken": "eyJraWQiOiIwNDkxODEiLCJhbGciOiJSUzI1NiJ9.eyJ4dWlkIjoiMjUzNTQwNzE5Mzc0NTc4MCIsImFnZyI6IkFkdWx0Iiwic3ViIjoiYWRlYTA5YjAtYjRmMS00N2UzLTg1MjEtNjRhYTBlOGQ1ZmZiIiwiYXV0aCI6IlhCT1giLCJwZmlkIjoiQzkxMkQ2RkQzMTdCM0Y5NyIsIm5zIjoiZGVmYXVsdCIsInJvbGVzIjpbXSwiaXNzIjoiYXV0aGVudGljYXRpb24iLCJmbGFncyI6WyJtdWx0aXBsYXllciJdLCJwcm9maWxlcyI6eyJtYyI6IjVlY2ZhZDZhLWRmYjEtNDFkNS1iNDc0LTk5ZWNlMTFkMThiZSJ9LCJtaWQiOiJDOTEyRDZGRDMxN0IzRjk3IiwicG1pZCI6ImEyMDZmMWNiLTdlMGMtNWJiZi1hYzU0LWJmZWQzZTJkZTE1OCIsInBsYXRmb3JtIjoiUENfTEFVTkNIRVIiLCJ0aWQiOiJFOTlCMCIsInBmZCI6W3sidHlwZSI6Im1jIiwiaWQiOiI1ZWNmYWQ2YS1kZmIxLTQxZDUtYjQ3NC05OWVjZTExZDE4YmUiLCJuYW1lIjoiRm9uZEJhc2lsNzAyMjM3In1dLCJ4aWQiOiIyNTM1NDA3MTkzNzQ1NzgwIiwibmJmIjoxNzc5ODkxNDE1LCJleHAiOjE3Nzk5Nzc4MTUsImlhdCI6MTc3OTg5MTQxNSwiYWlkIjoiMDAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDQ0MWNjOTZiIn0.Pj9Cj5ISI4gvVst2qtdqiP1999TgEsqUpwDMBod2s7yWu5c-xMz3Bc7tztvrKjOmu66qH8p4JCFfjDY_4hzG8PIJ8SkDia3jaJ2zMsQKguT64n-sVhnFR6dSsmZT4jJLOzyBn16ai80EDTRu5nWfl3zkiYL3bmw4O2-Xbg8TxxAG7MBErNzujEB1EaSoPsw3gzHMl2r2huaDbKt1PRzJ5Td1jVfQZ2LENeBa5hc8Az7qhpLoGjPXtS0CMTczPWdDgWffJqGCKD3BQjVT4ySCPsWmDgaIAvrRIT06ufFuUhjymrFGKFDZ7GVPwKMyyMwRaRqsdBGepHUvmuN2FQrS5w",
+  "refreshToken": null,
+  "selectedProfile": {
+    "id": "5ecfad6adfb141d5b47499ece11d18be",
+    "name": "FondBasil702237",
+    "skins": [
+      {
+        "id": "2f63940c-f462-47b3-a1b6-012fe30c3c26",
+        "state": "ACTIVE",
+        "url": "http://textures.minecraft.net/texture/cbac5729b8d2e22db5582a3bd4c61b3b72eda4c96d0662301d8bca1d8edce83e",
+        "textureKey": "cbac5729b8d2e22db5582a3bd4c61b3b72eda4c96d0662301d8bca1d8edce83e",
+        "variant": "CLASSIC"
+      }
+    ],
+    "capes": [
+      {
+        "id": "30743269-ab43-46e6-b25d-3b50b0f1ed41",
+        "state": "INACTIVE",
+        "url": "http://textures.minecraft.net/texture/afd553b39358a24edfe3b8a9a939fa5fa4faa4d9a9c3d6af8eafb377fa05c2bb",
+        "alias": "Cherry Blossom"
+      },
+      {
+        "id": "e7fcd100-d7dd-4c6c-a5f2-34bad18a3869",
+        "state": "INACTIVE",
+        "url": "http://textures.minecraft.net/texture/cb40a92e32b57fd732a00fc325e7afb00a7ca74936ad50d8e860152e482cfbde",
+        "alias": "Purple Heart"
+      },
+      {
+        "id": "2ed5269a-076e-4a3c-834a-2837d5b578f2",
+        "state": "INACTIVE",
+        "url": "http://textures.minecraft.net/texture/28de4a81688ad18b49e735a273e086c18f1e3966956123ccb574034c06f5d336",
+        "alias": "Pan"
+      },
+      {
+        "id": "b9d4f2e0-6109-43f7-97aa-84250ce3c1dd",
+        "state": "INACTIVE",
+        "url": "http://textures.minecraft.net/texture/5ec930cdd2629c8771655c60eebeb867b4b6559b0e6d3bc71c40c96347fa03f0",
+        "alias": "Common"
+      },
+      {
+        "id": "ef9e95b6-48a3-4fd7-93d4-7e7d9448d2f1",
+        "state": "INACTIVE",
+        "url": "http://textures.minecraft.net/texture/cd9d82ab17fd92022dbd4a86cde4c382a7540e117fae7b9a2853658505a80625",
+        "alias": "15th Anniversary"
+      }
+    ],
+    "profileActions": {}
+  }
+}
