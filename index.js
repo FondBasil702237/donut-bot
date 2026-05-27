@@ -26,7 +26,10 @@ const discordClient = new Client({
 let minecraftBot = null;
 
 function createMinecraftBot() {
-  if (minecraftBot) minecraftBot.quit();
+  if (minecraftBot) {
+    minecraftBot.quit();
+    minecraftBot = null;
+  }
 
   const botOptions = {
     host: 'DonutSMP.net',
@@ -49,8 +52,8 @@ function createMinecraftBot() {
     minecraftBot.setControlState('sneak', true);
   });
 
-  minecraftBot.on('end', (reason) => {
-    console.log('Disconnesso:', reason);
+  minecraftBot.on('end', () => {
+    console.log('Disconnesso da Minecraft');
     minecraftBot = null;
   });
 
@@ -58,6 +61,15 @@ function createMinecraftBot() {
     console.error('Errore MC:', err.message);
     minecraftBot = null;
   });
+}
+
+function disconnectMinecraftBot() {
+  if (minecraftBot) {
+    minecraftBot.quit();
+    minecraftBot = null;
+    return true;
+  }
+  return false;
 }
 
 discordClient.once('ready', () => {
@@ -78,8 +90,7 @@ discordClient.on('messageCreate', async (message) => {
       await message.reply('🎮 Connesso a DonutSMP!');
     }
   } else if (cmd === 'off') {
-    if (minecraftBot) {
-      minecraftBot.quit();
+    if (disconnectMinecraftBot()) {
       await message.reply('👋 Uscito!');
     } else {
       await message.reply('❌ Non connesso');
