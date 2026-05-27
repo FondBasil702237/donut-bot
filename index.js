@@ -4,65 +4,53 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// === Carica la sessione dal file ===
 let sessionData = null;
 try {
   const sessionPath = path.join(__dirname, 'session.json');
   if (fs.existsSync(sessionPath)) {
     sessionData = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
-    console.log('✅ Sessione caricata da session.json');
-  } else {
-    console.log('⚠️  session.json non trovato');
+    console.log('✅ Sessione caricata');
   }
 } catch (err) {
-  console.error('❌ Errore caricamento sessione:', err.message);
+  console.error('❌ Errore sessione:', err.message);
 }
 
-// === Discord ===
 const discordClient = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.DirectMessages
+    GatewayIntentBits.MessageContent
   ]
 });
 
 let minecraftBot = null;
 
 function createMinecraftBot() {
-  if (minecraftBot) {
-    minecraftBot.quit();
-  }
+  if (minecraftBot) minecraftBot.quit();
 
   const botOptions = {
-    host: process.env.MINECRAFT_HOST || 'DonutSMP.net',
-    port: parseInt(process.env.MINECRAFT_PORT) || 25565,
-    username: process.env.MINECRAFT_EMAIL || 'standx72@hotmail.com',
+    host: 'DonutSMP.net',
+    port: 25565,
+    username: 'standx72@hotmail.com',
     auth: 'microsoft',
   };
 
-  // Se abbiamo una sessione salvata, usala
   if (sessionData && sessionData.accessToken) {
     botOptions.session = {
       accessToken: sessionData.accessToken,
-      refreshToken: sessionData.refreshToken,
-      expiresAt: sessionData.expiresAt,
       selectedProfile: sessionData.selectedProfile,
-      tokenType: sessionData.tokenType
     };
-    console.log('🔑 Uso sessione salvata');
   }
 
   minecraftBot = mineflayer.createBot(botOptions);
 
   minecraftBot.once('spawn', () => {
-    console.log(`✅ Connesso a ${botOptions.host}`);
+    console.log('✅ Connesso a DonutSMP!');
     minecraftBot.setControlState('sneak', true);
-    console.log('👤 Accovacciato');
   });
 
   minecraftBot.on('end', (reason) => {
-    console.log(`Disconnesso: ${reason}`);
+    console.log('Disconnesso:', reason);
     minecraftBot = null;
   });
 
@@ -72,13 +60,14 @@ function createMinecraftBot() {
   });
 }
 
-// === Comandi Discord ===
 discordClient.once('ready', () => {
-  console.log(`🤖 Bot Discord: ${discordClient.user.tag}`);
+  console.log('🤖 Bot pronto:', discordClient.user.tag);
 });
 
 discordClient.on('messageCreate', async (message) => {
-  if (message.author.bot || message.channel.type !== 1) return;
+  if (message.author.bot) return;
+  if (message.channel.id !== '1509219275725082644') return;
+
   const cmd = message.content.toLowerCase().trim();
 
   if (cmd === 'on') {
@@ -98,14 +87,12 @@ discordClient.on('messageCreate', async (message) => {
   }
 });
 
-// === Health check ===
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('OK');
 }).listen(PORT, () => {
-  console.log(`💓 Porta ${PORT}`);
+  console.log('💓 Porta', PORT);
 });
 
-// === Avvia ===
 discordClient.login(process.env.DISCORD_TOKEN);
