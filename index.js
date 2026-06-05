@@ -1,40 +1,13 @@
-const { Client, GatewayIntentBits } = require('discord.js');
-const mineflayer = require('mineflayer');
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-
-// === Sessione ===
-let sessionData = null;
-try {
-  const sessionPath = path.join(__dirname, 'session.json');
-  if (fs.existsSync(sessionPath)) {
-    sessionData = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
-    console.log('✅ Sessione caricata');
-  }
-} catch (err) {
-  console.error('❌ Errore sessione:', err.message);
-}
-
-// === Discord Client (con soli intent necessari) ===
-const discordClient = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
-});
-
 // === Variabili ===
 let minecraftBot = null;
 let attackTimeout = null;
+let antiAfkInterval = null;
 
-// === Funzioni attacco ottimizzate ===
+// === Funzioni attacco ===
 function scheduleAttack() {
   if (!minecraftBot || !minecraftBot.entity) return;
   
-  // Tempo random tra 800ms e 1300ms
-  const delay = Math.floor(Math.random() * 500) + 800;
+  const delay = Math.floor(Math.random() * 500) + 800; // 0.8-1.3s
   
   attackTimeout = setTimeout(() => {
     if (!minecraftBot || !minecraftBot.entity) return;
@@ -44,7 +17,6 @@ function scheduleAttack() {
       minecraftBot.attack(entity);
     }
     
-    // Pianifica il prossimo attacco
     scheduleAttack();
   }, delay);
 }
@@ -68,118 +40,63 @@ function stopAttack() {
   return false;
 }
 
-// === Minecraft Bot ===
-function createMinecraftBot() {
-  if (minecraftBot) {
-    minecraftBot.quit();
-    minecraftBot = null;
-  }
-  stopAttack();
-
-  const botOptions = {
-    host: 'DonutSMP.net',
-    port: 25565,
-    username: 'standx72@hotmail.com',
-    auth: 'microsoft',
-    viewDistance: 'normal',       // Meno chunk = meno RAM
-    checkTimeoutInterval: 60000 // Controlli meno frequenti
-  };
-
-  if (sessionData?.accessToken) {
-    botOptions.session = {
-      accessToken: sessionData.accessToken,
-      selectedProfile: sessionData.selectedProfile,
-    };
-  }
-
-  minecraftBot = mineflayer.createBot(botOptions);
-
-  minecraftBot.once('spawn', () => {
-    console.log('✅ Connesso a DonutSMP');
-    minecraftBot.setControlState('sneak', true);
+// === Anti-AFK ogni 10 minuti ===
+function startAntiAfk() {
+  if (antiAfkInterval) return;
+  
+  antiAfkInterval = setInterval(() => {
+    if (!minecraftBot || !minecraftBot.entity) return;
     
-    // Disabilita funzioni inutili per risparmiare RAM
-    if (minecraftBot.pathfinder) minecraftBot.pathfinder.setGoal(null);
-    if (minecraftBot.physics) minecraftBot.physics.gravity = 0; // Non serve se fermo
-  });
-
-  minecraftBot.on('end', () => {
-    console.log('Disconnesso');
-    stopAttack();
-    minecraftBot = null;
-  });
-
-  minecraftBot.on('error', (err) => {
-    console.error('Errore MC:', err.message);
-    stopAttack();
-    minecraftBot = null;
-  });
+    console.log('🔄 Anti-AFK: movimento...');
+    
+    // Salva lo stato attuale
+    const wasAttacking = !!attackTimeout;
+    if (wasAttacking) stopAttack();
+    
+    // Rilascia sneak momentaneamente
+    minecraftBot.setControlState('sneak', false);
+    
+    // Gira di 180°
+    const currentYaw = minecraftBot.entity.yaw;
+    const newYaw = (currentYaw + Math.PI) % (Math.PI * 2);
+    minecraftBot.look(newYaw, minecraftBot.entity.pitch);
+    
+    // Cammina avanti per 0.3 secondi
+    minecraftBot.setControlState('forward', true);
+    
+    setTimeout(() => {
+      if (!minecraftBot) return;
+      
+      // Ferma camminata
+      minecraftBot.setControlState('forward', false);
+      
+      // Rigira di 180°
+      minecraftBot.look(currentYaw, minecraftBot.entity.pitch);
+      
+      // Cammina avanti per 0.3 secondi (torna alla posizione)
+      minecraftBot.setControlState('forward', true);
+      
+      setTimeout(() => {
+        if (!minecraftBot) return;
+        
+        // Ferma tutto
+        minecraftBot.setControlState('forward', false);
+        minecraftBot.setControlState('sneak', true);
+        
+        // Riprende attacco
+        if (wasAttacking) startAttack();
+        
+        console.log('✅ Anti-AFK completato');
+      }, 300);
+      
+    }, 300);
+    
+  }, 600000); // 10 minuti = 600000ms
 }
 
-function disconnectMinecraftBot() {
-  if (minecraftBot) {
-    stopAttack();
-    minecraftBot.quit();
-    minecraftBot = null;
-    return true;
+function stopAntiAfk() {
+  if (antiAfkInterval) {
+    clearInterval(antiAfkInterval);
+    antiAfkInterval = null;
   }
-  return false;
 }
-
-// === Discord ===
-discordClient.once('ready', () => {
-  console.log('🤖 Bot pronto:', discordClient.user.tag);
-});
-
-discordClient.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-  if (message.channel.id !== '1509219275725082644') return;
-
-  const cmd = message.content.toLowerCase().trim();
-
-  if (cmd === 'on') {
-    if (minecraftBot) {
-      await message.reply('✅ Già connesso!');
-    } else {
-      createMinecraftBot();
-      await message.reply('🎮 Connesso a DonutSMP!');
-    }
-  } else if (cmd === 'off') {
-    if (disconnectMinecraftBot()) {
-      await message.reply('👋 Uscito!');
-    } else {
-      await message.reply('❌ Non connesso');
-    }
-  } else if (cmd === 'attack') {
-    if (!minecraftBot) {
-      await message.reply('❌ Prima connettiti con `on`');
-    } else if (attackTimeout) {
-      await message.reply('⚔️ Già attivo!');
-    } else {
-      startAttack();
-      await message.reply('⚔️ **ATTACCO!** (0.8-1.3s)');
-    }
-  } else if (cmd === 'noattack') {
-    if (stopAttack()) {
-      await message.reply('🛑 **Fermato!**');
-    } else {
-      await message.reply('❌ Nessun attacco in corso');
-    }
-  }
-});
-
-// === Server HTTP minimo ===
-http.createServer((req, res) => {
-  res.writeHead(200);
-  res.end('OK');
-}).listen(process.env.PORT || 3000, () => {
-  console.log('💓 Porta', process.env.PORT || 3000);
-});
-
-// === Avvio ===
-discordClient.login(process.env.DISCORD_TOKEN);
-
-// === Pulizia memoria periodica ===
-setInterval(() => {
-  if (global.gc) global.gc();
-}, 300000); // Ogni 5 minuti
