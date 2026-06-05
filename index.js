@@ -4,6 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+// === Sessione ===
 let sessionData = null;
 try {
   const sessionPath = path.join(__dirname, 'session.json');
@@ -15,6 +16,7 @@ try {
   console.error('❌ Errore sessione:', err.message);
 }
 
+// === Discord Client (con soli intent necessari) ===
 const discordClient = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -23,44 +25,55 @@ const discordClient = new Client({
   ]
 });
 
+// === Variabili ===
 let minecraftBot = null;
-let attackInterval = null;  // <-- NUOVO: intervallo attacco
+let attackTimeout = null;
+
+// === Funzioni attacco ottimizzate ===
+function scheduleAttack() {
+  if (!minecraftBot || !minecraftBot.entity) return;
+  
+  // Tempo random tra 800ms e 1300ms
+  const delay = Math.floor(Math.random() * 500) + 800;
+  
+  attackTimeout = setTimeout(() => {
+    if (!minecraftBot || !minecraftBot.entity) return;
+    
+    const entity = minecraftBot.nearestEntity();
+    if (entity) {
+      minecraftBot.attack(entity);
+    }
+    
+    // Pianifica il prossimo attacco
+    scheduleAttack();
+  }, delay);
+}
 
 function startAttack() {
   if (!minecraftBot) return false;
-  if (attackInterval) return true; // già attivo
+  if (attackTimeout) return true;
   
-  attackInterval = setInterval(() => {
-    if (minecraftBot && minecraftBot.entity) {
-      // Attacca l'entità più vicina (o il vuoto)
-      const entity = minecraftBot.nearestEntity();
-      if (entity) {
-        minecraftBot.attack(entity);
-      }
-    }
-  }, 1000);
-  
-  console.log('⚔️ Attacco automatico avviato!');
+  scheduleAttack();
+  console.log('⚔️ Attacco avviato');
   return true;
 }
 
 function stopAttack() {
-  if (attackInterval) {
-    clearInterval(attackInterval);
-    attackInterval = null;
-    console.log('🛑 Attacco fermato!');
+  if (attackTimeout) {
+    clearTimeout(attackTimeout);
+    attackTimeout = null;
+    console.log('🛑 Attacco fermato');
     return true;
   }
   return false;
 }
 
+// === Minecraft Bot ===
 function createMinecraftBot() {
   if (minecraftBot) {
     minecraftBot.quit();
     minecraftBot = null;
   }
-
-  // Ferma eventuale attacco precedente
   stopAttack();
 
   const botOptions = {
@@ -68,9 +81,11 @@ function createMinecraftBot() {
     port: 25565,
     username: 'standx72@hotmail.com',
     auth: 'microsoft',
+    viewDistance: 'tiny',       // Meno chunk = meno RAM
+    checkTimeoutInterval: 60000 // Controlli meno frequenti
   };
 
-  if (sessionData && sessionData.accessToken) {
+  if (sessionData?.accessToken) {
     botOptions.session = {
       accessToken: sessionData.accessToken,
       selectedProfile: sessionData.selectedProfile,
@@ -80,26 +95,30 @@ function createMinecraftBot() {
   minecraftBot = mineflayer.createBot(botOptions);
 
   minecraftBot.once('spawn', () => {
-    console.log('✅ Connesso a DonutSMP!');
+    console.log('✅ Connesso a DonutSMP');
     minecraftBot.setControlState('sneak', true);
+    
+    // Disabilita funzioni inutili per risparmiare RAM
+    if (minecraftBot.pathfinder) minecraftBot.pathfinder.setGoal(null);
+    if (minecraftBot.physics) minecraftBot.physics.gravity = 0; // Non serve se fermo
   });
 
   minecraftBot.on('end', () => {
-    console.log('Disconnesso da Minecraft');
-    stopAttack();  // <-- NUOVO: ferma attacco quando esce
+    console.log('Disconnesso');
+    stopAttack();
     minecraftBot = null;
   });
 
   minecraftBot.on('error', (err) => {
     console.error('Errore MC:', err.message);
-    stopAttack();  // <-- NUOVO
+    stopAttack();
     minecraftBot = null;
   });
 }
 
 function disconnectMinecraftBot() {
   if (minecraftBot) {
-    stopAttack();  // <-- NUOVO: ferma attacco prima di uscire
+    stopAttack();
     minecraftBot.quit();
     minecraftBot = null;
     return true;
@@ -107,6 +126,7 @@ function disconnectMinecraftBot() {
   return false;
 }
 
+// === Discord ===
 discordClient.once('ready', () => {
   console.log('🤖 Bot pronto:', discordClient.user.tag);
 });
@@ -117,7 +137,6 @@ discordClient.on('messageCreate', async (message) => {
 
   const cmd = message.content.toLowerCase().trim();
 
-  // ============ ON ============
   if (cmd === 'on') {
     if (minecraftBot) {
       await message.reply('✅ Già connesso!');
@@ -125,45 +144,42 @@ discordClient.on('messageCreate', async (message) => {
       createMinecraftBot();
       await message.reply('🎮 Connesso a DonutSMP!');
     }
-  }
-  
-  // ============ OFF ============
-  else if (cmd === 'off') {
+  } else if (cmd === 'off') {
     if (disconnectMinecraftBot()) {
       await message.reply('👋 Uscito!');
     } else {
       await message.reply('❌ Non connesso');
     }
-  }
-  
-  // ============ ATTACK ============
-  else if (cmd === 'attack') {
+  } else if (cmd === 'attack') {
     if (!minecraftBot) {
-      await message.reply('❌ Devi prima connetterti con `on`!');
-    } else if (attackInterval) {
-      await message.reply('⚔️ Attacco già attivo!');
+      await message.reply('❌ Prima connettiti con `on`');
+    } else if (attackTimeout) {
+      await message.reply('⚔️ Già attivo!');
     } else {
       startAttack();
-      await message.reply('⚔️ **ATTACCO ATTIVATO!** Attacca ogni secondo.');
+      await message.reply('⚔️ **ATTACCO!** (0.8-1.3s)');
     }
-  }
-  
-  // ============ NOATTACK ============
-  else if (cmd === 'noattack') {
+  } else if (cmd === 'noattack') {
     if (stopAttack()) {
-      await message.reply('🛑 **Attacco fermato!**');
+      await message.reply('🛑 **Fermato!**');
     } else {
-      await message.reply('❌ Nessun attacco in corso.');
+      await message.reply('❌ Nessun attacco in corso');
     }
   }
 });
 
-const PORT = process.env.PORT || 3000;
+// === Server HTTP minimo ===
 http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.writeHead(200);
   res.end('OK');
-}).listen(PORT, () => {
-  console.log('💓 Porta', PORT);
+}).listen(process.env.PORT || 3000, () => {
+  console.log('💓 Porta', process.env.PORT || 3000);
 });
 
+// === Avvio ===
 discordClient.login(process.env.DISCORD_TOKEN);
+
+// === Pulizia memoria periodica ===
+setInterval(() => {
+  if (global.gc) global.gc();
+}, 300000); // Ogni 5 minuti
