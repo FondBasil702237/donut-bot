@@ -81,7 +81,7 @@ function createMinecraftBot() {
     port: 25565,
     username: 'standx72@hotmail.com',
     auth: 'microsoft',
-    viewDistance: 'tiny',       // Meno chunk = meno RAM
+    viewDistance: 'normal',       // Meno chunk = meno RAM
     checkTimeoutInterval: 60000 // Controlli meno frequenti
   };
 
