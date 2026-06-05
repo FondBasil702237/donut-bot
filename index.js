@@ -160,7 +160,7 @@ function createMinecraftBot() {
     port: 25565,
     username: 'standx72@hotmail.com',
     auth: 'microsoft',
-    viewDistance: 'normal',
+    viewDistance: 'far',
     checkTimeoutInterval: 60000,
     skipValidation: true
   };
