@@ -24,12 +24,44 @@ const discordClient = new Client({
 });
 
 let minecraftBot = null;
+let attackInterval = null;  // <-- NUOVO: intervallo attacco
+
+function startAttack() {
+  if (!minecraftBot) return false;
+  if (attackInterval) return true; // già attivo
+  
+  attackInterval = setInterval(() => {
+    if (minecraftBot && minecraftBot.entity) {
+      // Attacca l'entità più vicina (o il vuoto)
+      const entity = minecraftBot.nearestEntity();
+      if (entity) {
+        minecraftBot.attack(entity);
+      }
+    }
+  }, 1000);
+  
+  console.log('⚔️ Attacco automatico avviato!');
+  return true;
+}
+
+function stopAttack() {
+  if (attackInterval) {
+    clearInterval(attackInterval);
+    attackInterval = null;
+    console.log('🛑 Attacco fermato!');
+    return true;
+  }
+  return false;
+}
 
 function createMinecraftBot() {
   if (minecraftBot) {
     minecraftBot.quit();
     minecraftBot = null;
   }
+
+  // Ferma eventuale attacco precedente
+  stopAttack();
 
   const botOptions = {
     host: 'DonutSMP.net',
@@ -54,17 +86,20 @@ function createMinecraftBot() {
 
   minecraftBot.on('end', () => {
     console.log('Disconnesso da Minecraft');
+    stopAttack();  // <-- NUOVO: ferma attacco quando esce
     minecraftBot = null;
   });
 
   minecraftBot.on('error', (err) => {
     console.error('Errore MC:', err.message);
+    stopAttack();  // <-- NUOVO
     minecraftBot = null;
   });
 }
 
 function disconnectMinecraftBot() {
   if (minecraftBot) {
+    stopAttack();  // <-- NUOVO: ferma attacco prima di uscire
     minecraftBot.quit();
     minecraftBot = null;
     return true;
@@ -82,6 +117,7 @@ discordClient.on('messageCreate', async (message) => {
 
   const cmd = message.content.toLowerCase().trim();
 
+  // ============ ON ============
   if (cmd === 'on') {
     if (minecraftBot) {
       await message.reply('✅ Già connesso!');
@@ -89,11 +125,35 @@ discordClient.on('messageCreate', async (message) => {
       createMinecraftBot();
       await message.reply('🎮 Connesso a DonutSMP!');
     }
-  } else if (cmd === 'off') {
+  }
+  
+  // ============ OFF ============
+  else if (cmd === 'off') {
     if (disconnectMinecraftBot()) {
       await message.reply('👋 Uscito!');
     } else {
       await message.reply('❌ Non connesso');
+    }
+  }
+  
+  // ============ ATTACK ============
+  else if (cmd === 'attack') {
+    if (!minecraftBot) {
+      await message.reply('❌ Devi prima connetterti con `on`!');
+    } else if (attackInterval) {
+      await message.reply('⚔️ Attacco già attivo!');
+    } else {
+      startAttack();
+      await message.reply('⚔️ **ATTACCO ATTIVATO!** Attacca ogni secondo.');
+    }
+  }
+  
+  // ============ NOATTACK ============
+  else if (cmd === 'noattack') {
+    if (stopAttack()) {
+      await message.reply('🛑 **Attacco fermato!**');
+    } else {
+      await message.reply('❌ Nessun attacco in corso.');
     }
   }
 });
