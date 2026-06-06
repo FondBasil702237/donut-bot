@@ -16,10 +16,19 @@ let antiAfkInterval = null;
 function startAntiAfk() {
   if (!minecraftBot) return;
 
+  // Ogni secondo: attacca il mob più vicino
   const swingInterval = setInterval(() => {
-    if (minecraftBot) minecraftBot.swingArm('left');
+    if (!minecraftBot) return;
+    
+    const entity = minecraftBot.nearestEntity((e) => e.type === 'mob');
+    if (entity) {
+      minecraftBot.attack(entity);
+    } else {
+      minecraftBot.swingArm('left');
+    }
   }, 1000);
 
+  // Ogni 10 minuti: movimento + tasto 8 + RMB 4s + tasto 1
   const moveInterval = setInterval(() => {
     if (!minecraftBot) return;
     minecraftBot.setControlState('sneak', false);
