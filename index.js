@@ -29,6 +29,8 @@ const discordClient = new Client({
 let minecraftBot = null;
 let attackTimeout = null;
 let antiAfkInterval = null;
+let reconnectTimeout = null;
+let reconnectAttempts = 0;
 
 // === Funzioni attacco ===
 function scheduleAttack() {
@@ -42,6 +44,7 @@ function scheduleAttack() {
     const entity = minecraftBot.nearestEntity();
     if (entity) {
       minecraftBot.attack(entity);
+      console.log('👊 Attaccato:', entity.name || entity.username || entity.type);
     }
     
     scheduleAttack();
@@ -79,26 +82,19 @@ function startAntiAfk() {
     const wasAttacking = !!attackTimeout;
     if (wasAttacking) stopAttack();
     
-    // Rilascia sneak
     minecraftBot.setControlState('sneak', false);
     
-    // Gira di 180°
     const currentYaw = minecraftBot.entity.yaw;
     const newYaw = (currentYaw + Math.PI) % (Math.PI * 2);
     minecraftBot.look(newYaw, minecraftBot.entity.pitch);
     
-    // Cammina avanti 0.3s
     minecraftBot.setControlState('forward', true);
     
     setTimeout(() => {
       if (!minecraftBot) return;
       
       minecraftBot.setControlState('forward', false);
-      
-      // Rigira di 180°
       minecraftBot.look(currentYaw, minecraftBot.entity.pitch);
-      
-      // Cammina avanti 0.3s
       minecraftBot.setControlState('forward', true);
       
       setTimeout(() => {
@@ -106,26 +102,19 @@ function startAntiAfk() {
         
         minecraftBot.setControlState('forward', false);
         
-        // === MANGIA ===
-        // Cambia slot 8 (cibo)
         minecraftBot.setQuickBarSlot(7);
         console.log('🍗 Slot 8 selezionato');
         
-        // Attiva il cibo (tasto destro)
         minecraftBot.activateItem();
         
-        // Tieni premuto per 4 secondi
         setTimeout(() => {
           if (!minecraftBot) return;
           
-          // Rilascia il tasto
           minecraftBot.deactivateItem();
           console.log('✅ Mangiato!');
           
-          // Torna in sneak
           minecraftBot.setControlState('sneak', true);
           
-          // Riprende attacco
           if (wasAttacking) startAttack();
           
           console.log('✅ Anti-AFK completato');
@@ -154,13 +143,18 @@ function createMinecraftBot() {
   }
   stopAttack();
   stopAntiAfk();
+  
+  if (reconnectTimeout) {
+    clearTimeout(reconnectTimeout);
+    reconnectTimeout = null;
+  }
 
   const botOptions = {
     host: 'DonutSMP.net',
     port: 25565,
     username: 'standx72@hotmail.com',
     auth: 'microsoft',
-    viewDistance: 'far',
+    viewDistance: 'normal',
     checkTimeoutInterval: 60000,
     skipValidation: true
   };
@@ -179,15 +173,29 @@ function createMinecraftBot() {
 
   minecraftBot.once('spawn', () => {
     console.log('✅ Connesso a DonutSMP');
-    minecraftBot.setControlState('sneak', true);
-    startAntiAfk();
+    reconnectAttempts = 0;
+    
+    setTimeout(() => {
+      if (minecraftBot) {
+        minecraftBot.setControlState('sneak', true);
+        startAntiAfk();
+      }
+    }, 2000);
   });
 
-  minecraftBot.on('end', () => {
-    console.log('Disconnesso');
+  minecraftBot.on('end', (reason) => {
+    console.log('Disconnesso - Motivo:', reason);
     stopAttack();
     stopAntiAfk();
     minecraftBot = null;
+    
+    reconnectAttempts++;
+    const delay = Math.min(reconnectAttempts * 5000, 60000);
+    console.log(`🔄 Riconnessione tra ${delay/1000}s (tentativo ${reconnectAttempts})`);
+    
+    reconnectTimeout = setTimeout(() => {
+      createMinecraftBot();
+    }, delay);
   });
 
   minecraftBot.on('error', (err) => {
@@ -195,6 +203,14 @@ function createMinecraftBot() {
     stopAttack();
     stopAntiAfk();
     minecraftBot = null;
+    
+    reconnectTimeout = setTimeout(() => {
+      createMinecraftBot();
+    }, 10000);
+  });
+  
+  minecraftBot.on('kicked', (reason) => {
+    console.log('Kickato:', reason);
   });
 }
 
@@ -202,6 +218,11 @@ function disconnectMinecraftBot() {
   if (minecraftBot) {
     stopAttack();
     stopAntiAfk();
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
+    reconnectAttempts = 0;
     minecraftBot.quit();
     minecraftBot = null;
     return true;
