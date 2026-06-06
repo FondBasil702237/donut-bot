@@ -31,6 +31,7 @@ let attackTimeout = null;
 let antiAfkInterval = null;
 let reconnectTimeout = null;
 let reconnectAttempts = 0;
+let manualDisconnect = false;
 
 // === Funzioni attacco (SOLO ENDERMAN) ===
 function scheduleAttack() {
@@ -41,7 +42,6 @@ function scheduleAttack() {
   attackTimeout = setTimeout(() => {
     if (!minecraftBot || !minecraftBot.entity) return;
     
-    // Cerca solo Enderman entro 4 blocchi
     const entity = minecraftBot.nearestEntity(e => {
       return e.name === 'enderman' || e.mobType === 'Enderman';
     });
@@ -141,6 +141,8 @@ function stopAntiAfk() {
 
 // === Minecraft Bot ===
 function createMinecraftBot() {
+  manualDisconnect = false;
+  
   if (minecraftBot) {
     minecraftBot.quit();
     minecraftBot = null;
@@ -194,6 +196,11 @@ function createMinecraftBot() {
     stopAntiAfk();
     minecraftBot = null;
     
+    if (manualDisconnect) {
+      console.log('🛑 Disconnessione manuale, non riconnetto');
+      return;
+    }
+    
     reconnectAttempts++;
     const delay = Math.min(reconnectAttempts * 5000, 60000);
     console.log(`🔄 Riconnessione tra ${delay/1000}s (tentativo ${reconnectAttempts})`);
@@ -209,6 +216,8 @@ function createMinecraftBot() {
     stopAntiAfk();
     minecraftBot = null;
     
+    if (manualDisconnect) return;
+    
     reconnectTimeout = setTimeout(() => {
       createMinecraftBot();
     }, 10000);
@@ -221,6 +230,7 @@ function createMinecraftBot() {
 
 function disconnectMinecraftBot() {
   if (minecraftBot) {
+    manualDisconnect = true;
     stopAttack();
     stopAntiAfk();
     if (reconnectTimeout) {
