@@ -295,7 +295,7 @@ http.createServer((req, res) => {
   console.log('💓 Porta', process.env.PORT || 3000);
 });
 
-// === Avvio ===
+// === Avvio Discord (SENZA connettere a Minecraft) ===
 discordClient.login(process.env.DISCORD_TOKEN);
 
 // === Pulizia memoria ===
