@@ -32,7 +32,7 @@ let antiAfkInterval = null;
 let reconnectTimeout = null;
 let reconnectAttempts = 0;
 
-// === Funzioni attacco ===
+// === Funzioni attacco (SOLO ENDERMAN) ===
 function scheduleAttack() {
   if (!minecraftBot || !minecraftBot.entity) return;
   
@@ -41,10 +41,14 @@ function scheduleAttack() {
   attackTimeout = setTimeout(() => {
     if (!minecraftBot || !minecraftBot.entity) return;
     
-    const entity = minecraftBot.nearestEntity();
-    if (entity) {
+    // Cerca solo Enderman entro 4 blocchi
+    const entity = minecraftBot.nearestEntity(e => {
+      return e.name === 'enderman' || e.mobType === 'Enderman';
+    });
+    
+    if (entity && entity.position.distanceTo(minecraftBot.entity.position) < 4) {
       minecraftBot.attack(entity);
-      console.log('👊 Attaccato:', entity.name || entity.username || entity.type);
+      console.log('👊 Attaccato Enderman!');
     }
     
     scheduleAttack();
@@ -56,7 +60,7 @@ function startAttack() {
   if (attackTimeout) return true;
   
   scheduleAttack();
-  console.log('⚔️ Attacco avviato');
+  console.log('⚔️ Attacco avviato (Enderman)');
   return true;
 }
 
@@ -155,7 +159,8 @@ function createMinecraftBot() {
     username: 'standx72@hotmail.com',
     auth: 'microsoft',
     viewDistance: 'normal',
-    checkTimeoutInterval: 60000,
+    checkTimeoutInterval: 120000,
+    connectTimeout: 30000,
     skipValidation: true
   };
 
@@ -210,7 +215,7 @@ function createMinecraftBot() {
   });
   
   minecraftBot.on('kicked', (reason) => {
-    console.log('Kickato:', reason);
+    console.log('Kickato:', JSON.stringify(reason).substring(0, 100));
   });
 }
 
@@ -261,7 +266,7 @@ discordClient.on('messageCreate', async (message) => {
       await message.reply('⚔️ Già attivo!');
     } else {
       startAttack();
-      await message.reply('⚔️ **ATTACCO!** (0.8-1.3s)');
+      await message.reply('⚔️ **ATTACCO ENDERMAN!** (0.8-1.3s)');
     }
   } else if (cmd === 'noattack') {
     if (stopAttack()) {
