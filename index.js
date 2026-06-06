@@ -4,7 +4,6 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// === Sessione ===
 let sessionData = null;
 try {
   const sessionPath = path.join(__dirname, 'session.json');
@@ -16,7 +15,6 @@ try {
   console.error('❌ Errore sessione:', err.message);
 }
 
-// === Discord Client ===
 const discordClient = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -25,219 +23,112 @@ const discordClient = new Client({
   ]
 });
 
-// === Variabili ===
 let minecraftBot = null;
-let attackTimeout = null;
 let antiAfkInterval = null;
-let reconnectTimeout = null;
-let reconnectAttempts = 0;
-let manualDisconnect = false;
 
-// === Funzioni attacco (SOLO ENDERMAN) ===
-function scheduleAttack() {
-  if (!minecraftBot || !minecraftBot.entity) return;
-  
-  const delay = Math.floor(Math.random() * 500) + 800;
-  
-  attackTimeout = setTimeout(() => {
-    if (!minecraftBot || !minecraftBot.entity) return;
-    
-    const entity = minecraftBot.nearestEntity(e => {
-      return e.name === 'enderman' || e.mobType === 'Enderman';
-    });
-    
-    if (entity && entity.position.distanceTo(minecraftBot.entity.position) < 4) {
-      minecraftBot.attack(entity);
-      console.log('👊 Attaccato Enderman!');
-    }
-    
-    scheduleAttack();
-  }, delay);
-}
-
-function startAttack() {
-  if (!minecraftBot) return false;
-  if (attackTimeout) return true;
-  
-  scheduleAttack();
-  console.log('⚔️ Attacco avviato (Enderman)');
-  return true;
-}
-
-function stopAttack() {
-  if (attackTimeout) {
-    clearTimeout(attackTimeout);
-    attackTimeout = null;
-    console.log('🛑 Attacco fermato');
-    return true;
-  }
-  return false;
-}
-
-// === Anti-AFK ogni 10 minuti ===
 function startAntiAfk() {
-  if (antiAfkInterval) return;
-  
-  antiAfkInterval = setInterval(() => {
-    if (!minecraftBot || !minecraftBot.entity) return;
+  if (!minecraftBot) return;
+
+  // Ogni secondo: colpisce (rmb)
+  const swingInterval = setInterval(() => {
+    if (minecraftBot) {
+      minecraftBot.swingArm('right');
+    }
+  }, 1000);
+
+  // Ogni 10 minuti: movimento anti-AFK
+  const moveInterval = setInterval(() => {
+    if (!minecraftBot) return;
     
-    console.log('🔄 Anti-AFK: movimento + mangia...');
-    
-    const wasAttacking = !!attackTimeout;
-    if (wasAttacking) stopAttack();
-    
+    // Smetti di shiftare per muoverti
     minecraftBot.setControlState('sneak', false);
     
-    const currentYaw = minecraftBot.entity.yaw;
-    const newYaw = (currentYaw + Math.PI) % (Math.PI * 2);
-    minecraftBot.look(newYaw, minecraftBot.entity.pitch);
+    // Guarda indietro (180 gradi)
+    const yaw = minecraftBot.entity.yaw;
+    const newYaw = (yaw + Math.PI) % (Math.PI * 2);
+    minecraftBot.look(newYaw, 0);
     
+    // Cammina avanti per 0.2 secondi
     minecraftBot.setControlState('forward', true);
-    
     setTimeout(() => {
       if (!minecraftBot) return;
-      
       minecraftBot.setControlState('forward', false);
-      minecraftBot.look(currentYaw, minecraftBot.entity.pitch);
-      minecraftBot.setControlState('forward', true);
       
+      // Girati di nuovo (180 gradi)
+      const yaw2 = minecraftBot.entity.yaw;
+      const newYaw2 = (yaw2 + Math.PI) % (Math.PI * 2);
+      minecraftBot.look(newYaw2, 0);
+      
+      // Cammina avanti per 0.2 secondi
+      minecraftBot.setControlState('forward', true);
       setTimeout(() => {
         if (!minecraftBot) return;
-        
         minecraftBot.setControlState('forward', false);
         
-        minecraftBot.setQuickBarSlot(7);
-        console.log('🍗 Slot 8 selezionato');
-        
-        minecraftBot.activateItem();
-        
-        setTimeout(() => {
-          if (!minecraftBot) return;
-          
-          minecraftBot.deactivateItem();
-          console.log('✅ Mangiato!');
-          
-          minecraftBot.setControlState('sneak', true);
-          
-          if (wasAttacking) startAttack();
-          
-          console.log('✅ Anti-AFK completato');
-          
-        }, 4000);
-        
-      }, 300);
-      
-    }, 300);
-    
-  }, 600000);
+        // Torna shiftato
+        minecraftBot.setControlState('sneak', true);
+      }, 200);
+    }, 200);
+  }, 10 * 60 * 1000); // 10 minuti
+
+  antiAfkInterval = { swingInterval, moveInterval };
+  console.log('🔄 Anti-AFK avviato (rmb ogni 1s, movimento ogni 10min)');
 }
 
 function stopAntiAfk() {
   if (antiAfkInterval) {
-    clearInterval(antiAfkInterval);
+    clearInterval(antiAfkInterval.swingInterval);
+    clearInterval(antiAfkInterval.moveInterval);
     antiAfkInterval = null;
+    console.log('⏹️ Anti-AFK fermato');
   }
 }
 
-// === Minecraft Bot ===
 function createMinecraftBot() {
-  manualDisconnect = false;
-  
   if (minecraftBot) {
     minecraftBot.quit();
     minecraftBot = null;
   }
-  stopAttack();
   stopAntiAfk();
-  
-  if (reconnectTimeout) {
-    clearTimeout(reconnectTimeout);
-    reconnectTimeout = null;
-  }
 
   const botOptions = {
     host: 'DonutSMP.net',
     port: 25565,
     username: 'standx72@hotmail.com',
     auth: 'microsoft',
-    viewDistance: 'normal',
-    checkTimeoutInterval: 120000,
-    connectTimeout: 30000,
-    skipValidation: true
   };
 
-  if (sessionData?.accessToken) {
-    console.log('🔑 Uso sessione salvata');
+  if (sessionData && sessionData.accessToken) {
     botOptions.session = {
       accessToken: sessionData.accessToken,
       selectedProfile: sessionData.selectedProfile,
     };
-  } else {
-    console.log('⚠️ Nessuna sessione, servirà auth manuale');
   }
 
   minecraftBot = mineflayer.createBot(botOptions);
 
   minecraftBot.once('spawn', () => {
-    console.log('✅ Connesso a DonutSMP');
-    reconnectAttempts = 0;
-    
-    setTimeout(() => {
-      if (minecraftBot) {
-        minecraftBot.setControlState('sneak', true);
-        startAntiAfk();
-      }
-    }, 2000);
+    console.log('✅ Connesso a DonutSMP!');
+    minecraftBot.setControlState('sneak', true);
+    startAntiAfk();
   });
 
-  minecraftBot.on('end', (reason) => {
-    console.log('Disconnesso - Motivo:', reason);
-    stopAttack();
+  minecraftBot.on('end', () => {
+    console.log('Disconnesso da Minecraft');
     stopAntiAfk();
     minecraftBot = null;
-    
-    if (manualDisconnect) {
-      console.log('🛑 Disconnessione manuale, non riconnetto');
-      return;
-    }
-    
-    reconnectAttempts++;
-    const delay = Math.min(reconnectAttempts * 5000, 60000);
-    console.log(`🔄 Riconnessione tra ${delay/1000}s (tentativo ${reconnectAttempts})`);
-    
-    reconnectTimeout = setTimeout(() => {
-      createMinecraftBot();
-    }, delay);
   });
 
   minecraftBot.on('error', (err) => {
     console.error('Errore MC:', err.message);
-    stopAttack();
     stopAntiAfk();
     minecraftBot = null;
-    
-    if (manualDisconnect) return;
-    
-    reconnectTimeout = setTimeout(() => {
-      createMinecraftBot();
-    }, 10000);
-  });
-  
-  minecraftBot.on('kicked', (reason) => {
-    console.log('Kickato:', JSON.stringify(reason).substring(0, 100));
   });
 }
 
 function disconnectMinecraftBot() {
+  stopAntiAfk();
   if (minecraftBot) {
-    manualDisconnect = true;
-    stopAttack();
-    stopAntiAfk();
-    if (reconnectTimeout) {
-      clearTimeout(reconnectTimeout);
-      reconnectTimeout = null;
-    }
-    reconnectAttempts = 0;
     minecraftBot.quit();
     minecraftBot = null;
     return true;
@@ -245,7 +136,6 @@ function disconnectMinecraftBot() {
   return false;
 }
 
-// === Discord ===
 discordClient.once('ready', () => {
   console.log('🤖 Bot pronto:', discordClient.user.tag);
 });
@@ -261,7 +151,7 @@ discordClient.on('messageCreate', async (message) => {
       await message.reply('✅ Già connesso!');
     } else {
       createMinecraftBot();
-      await message.reply('🎮 Connesso a DonutSMP!');
+      await message.reply('🎮 Connesso a DonutSMP! AFK attivo.');
     }
   } else if (cmd === 'off') {
     if (disconnectMinecraftBot()) {
@@ -269,36 +159,15 @@ discordClient.on('messageCreate', async (message) => {
     } else {
       await message.reply('❌ Non connesso');
     }
-  } else if (cmd === 'attack') {
-    if (!minecraftBot) {
-      await message.reply('❌ Prima connettiti con `on`');
-    } else if (attackTimeout) {
-      await message.reply('⚔️ Già attivo!');
-    } else {
-      startAttack();
-      await message.reply('⚔️ **ATTACCO ENDERMAN!** (0.8-1.3s)');
-    }
-  } else if (cmd === 'noattack') {
-    if (stopAttack()) {
-      await message.reply('🛑 **Fermato!**');
-    } else {
-      await message.reply('❌ Nessun attacco in corso');
-    }
   }
 });
 
-// === Server HTTP ===
+const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
-  res.writeHead(200);
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('OK');
-}).listen(process.env.PORT || 3000, () => {
-  console.log('💓 Porta', process.env.PORT || 3000);
+}).listen(PORT, () => {
+  console.log('💓 Porta', PORT);
 });
 
-// === Avvio Discord (SENZA connettere a Minecraft) ===
 discordClient.login(process.env.DISCORD_TOKEN);
-
-// === Pulizia memoria ===
-setInterval(() => {
-  if (global.gc) global.gc();
-}, 300000);
