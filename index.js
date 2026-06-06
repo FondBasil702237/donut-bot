@@ -29,50 +29,64 @@ let antiAfkInterval = null;
 function startAntiAfk() {
   if (!minecraftBot) return;
 
-  // Ogni secondo: colpisce (rmb)
+  // Ogni secondo: colpisce (LMB - sinistro)
   const swingInterval = setInterval(() => {
     if (minecraftBot) {
-      minecraftBot.swingArm('right');
+      minecraftBot.swingArm('left');
     }
   }, 1000);
 
-  // Ogni 10 minuti: movimento anti-AFK
+  // Ogni 10 minuti: movimento + tasto 8 + RMB 4s + tasto 1 + shift + LMB
   const moveInterval = setInterval(() => {
     if (!minecraftBot) return;
-    
+
     // Smetti di shiftare per muoverti
     minecraftBot.setControlState('sneak', false);
-    
+
     // Guarda indietro (180 gradi)
     const yaw = minecraftBot.entity.yaw;
     const newYaw = (yaw + Math.PI) % (Math.PI * 2);
     minecraftBot.look(newYaw, 0);
-    
+
     // Cammina avanti per 0.2 secondi
     minecraftBot.setControlState('forward', true);
     setTimeout(() => {
       if (!minecraftBot) return;
       minecraftBot.setControlState('forward', false);
-      
+
       // Girati di nuovo (180 gradi)
       const yaw2 = minecraftBot.entity.yaw;
       const newYaw2 = (yaw2 + Math.PI) % (Math.PI * 2);
       minecraftBot.look(newYaw2, 0);
-      
+
       // Cammina avanti per 0.2 secondi
       minecraftBot.setControlState('forward', true);
       setTimeout(() => {
         if (!minecraftBot) return;
         minecraftBot.setControlState('forward', false);
-        
-        // Torna shiftato
-        minecraftBot.setControlState('sneak', true);
+
+        // Schiaccia tasto 8 (slot 8)
+        minecraftBot.setQuickBarSlot(7);
+
+        // Tieni premuto RMB per 4 secondi
+        minecraftBot.activateItem(true);
+        setTimeout(() => {
+          if (!minecraftBot) return;
+          minecraftBot.activateItem(false);
+
+          // Torna allo slot 1
+          minecraftBot.setQuickBarSlot(0);
+
+          // Torna shiftato
+          minecraftBot.setControlState('sneak', true);
+          console.log('🔄 Ciclo anti-AFK completato');
+        }, 4000);
       }, 200);
     }, 200);
   }, 10 * 60 * 1000); // 10 minuti
 
   antiAfkInterval = { swingInterval, moveInterval };
-  console.log('🔄 Anti-AFK avviato (rmb ogni 1s, movimento ogni 10min)');
+  console.log('🔄 Anti-AFK avviato');
 }
 
 function stopAntiAfk() {
