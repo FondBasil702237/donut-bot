@@ -1,19 +1,6 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const mineflayer = require('mineflayer');
 const http = require('http');
-const fs = require('fs');
-const path = require('path');
-
-let sessionData = null;
-try {
-  const sessionPath = path.join(__dirname, 'session.json');
-  if (fs.existsSync(sessionPath)) {
-    sessionData = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
-    console.log('✅ Sessione caricata');
-  }
-} catch (err) {
-  console.error('❌ Errore sessione:', err.message);
-}
 
 const discordClient = new Client({
   intents: [
@@ -29,64 +16,38 @@ let antiAfkInterval = null;
 function startAntiAfk() {
   if (!minecraftBot) return;
 
-  // Ogni secondo: colpisce (LMB - sinistro)
   const swingInterval = setInterval(() => {
-    if (minecraftBot) {
-      minecraftBot.swingArm('left');
-    }
+    if (minecraftBot) minecraftBot.swingArm('left');
   }, 1000);
 
-  // Ogni 10 minuti: movimento + tasto 8 + RMB 4s + tasto 1 + shift + LMB
   const moveInterval = setInterval(() => {
     if (!minecraftBot) return;
-
-    // Smetti di shiftare per muoverti
     minecraftBot.setControlState('sneak', false);
-
-    // Guarda indietro (180 gradi)
     const yaw = minecraftBot.entity.yaw;
-    const newYaw = (yaw + Math.PI) % (Math.PI * 2);
-    minecraftBot.look(newYaw, 0);
-
-    // Cammina avanti per 0.2 secondi
+    minecraftBot.look((yaw + Math.PI) % (Math.PI * 2), 0);
     minecraftBot.setControlState('forward', true);
     setTimeout(() => {
       if (!minecraftBot) return;
       minecraftBot.setControlState('forward', false);
-
-      // Girati di nuovo (180 gradi)
       const yaw2 = minecraftBot.entity.yaw;
-      const newYaw2 = (yaw2 + Math.PI) % (Math.PI * 2);
-      minecraftBot.look(newYaw2, 0);
-
-      // Cammina avanti per 0.2 secondi
+      minecraftBot.look((yaw2 + Math.PI) % (Math.PI * 2), 0);
       minecraftBot.setControlState('forward', true);
       setTimeout(() => {
         if (!minecraftBot) return;
         minecraftBot.setControlState('forward', false);
-
-        // Schiaccia tasto 8 (slot 8)
         minecraftBot.setQuickBarSlot(7);
-
-        // Tieni premuto RMB per 4 secondi
         minecraftBot.activateItem(true);
         setTimeout(() => {
           if (!minecraftBot) return;
           minecraftBot.activateItem(false);
-
-          // Torna allo slot 1
           minecraftBot.setQuickBarSlot(0);
-
-          // Torna shiftato
           minecraftBot.setControlState('sneak', true);
-          console.log('🔄 Ciclo anti-AFK completato');
         }, 4000);
       }, 200);
     }, 200);
-  }, 10 * 60 * 1000); // 10 minuti
+  }, 10 * 60 * 1000);
 
   antiAfkInterval = { swingInterval, moveInterval };
-  console.log('🔄 Anti-AFK avviato');
 }
 
 function stopAntiAfk() {
@@ -94,7 +55,6 @@ function stopAntiAfk() {
     clearInterval(antiAfkInterval.swingInterval);
     clearInterval(antiAfkInterval.moveInterval);
     antiAfkInterval = null;
-    console.log('⏹️ Anti-AFK fermato');
   }
 }
 
@@ -105,21 +65,25 @@ function createMinecraftBot() {
   }
   stopAntiAfk();
 
-  const botOptions = {
+  const accessToken = process.env.MINECRAFT_TOKEN;
+  if (!accessToken) {
+    console.error('❌ MINECRAFT_TOKEN non impostato!');
+    return;
+  }
+
+  minecraftBot = mineflayer.createBot({
     host: 'DonutSMP.net',
     port: 25565,
     username: 'standx72@hotmail.com',
     auth: 'microsoft',
-  };
-
-  if (sessionData && sessionData.accessToken) {
-    botOptions.session = {
-      accessToken: sessionData.accessToken,
-      selectedProfile: sessionData.selectedProfile,
-    };
-  }
-
-  minecraftBot = mineflayer.createBot(botOptions);
+    session: {
+      accessToken: accessToken,
+      selectedProfile: {
+        id: '5ecfad6adfb141d5b47499ece11d18be',
+        name: 'FondBasil702237'
+      }
+    }
+  });
 
   minecraftBot.once('spawn', () => {
     console.log('✅ Connesso a DonutSMP!');
@@ -128,7 +92,7 @@ function createMinecraftBot() {
   });
 
   minecraftBot.on('end', () => {
-    console.log('Disconnesso da Minecraft');
+    console.log('Disconnesso');
     stopAntiAfk();
     minecraftBot = null;
   });
@@ -165,7 +129,7 @@ discordClient.on('messageCreate', async (message) => {
       await message.reply('✅ Già connesso!');
     } else {
       createMinecraftBot();
-      await message.reply('🎮 Connesso a DonutSMP! AFK attivo.');
+      await message.reply('🎮 Connesso a DonutSMP!');
     }
   } else if (cmd === 'off') {
     if (disconnectMinecraftBot()) {
