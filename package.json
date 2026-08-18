@@ -1,17 +1,13 @@
 {
-  "name": "donut-bot",
+  "name": "donut-bot-amico",
   "version": "1.0.0",
-  "description": "",
+  "description": "Bot AFK per DonutSMP",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "discord.js": "^14.26.4",
-    "mineflayer": "^4.37.1"
+    "discord.js": "^14.15.3",
+    "mineflayer": "^4.23.0"
   }
 }
