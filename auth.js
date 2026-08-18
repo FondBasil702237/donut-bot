@@ -1,4 +1,4 @@
-// auth.js
+// auth.js – Script per ottenere il token Microsoft
 const mineflayer = require('mineflayer');
 const fs = require('fs');
 const path = require('path');
@@ -20,7 +20,6 @@ bot.once('login', () => {
   console.log('✅ Autenticazione completata!');
   
   setTimeout(() => {
-    // Salva la sessione
     if (bot._client && bot._client.session) {
       const s = bot._client.session;
       const sessionData = {
@@ -36,16 +35,8 @@ bot.once('login', () => {
         JSON.stringify(sessionData, null, 2)
       );
       console.log('💾 session.json salvato!');
+      console.log('📋 Copia il valore di "accessToken" e usalo su Render come MINECRAFT_TOKEN');
     }
-    
-    // Mostra i file nella cache
-    const files = fs.readdirSync(cacheDir);
-    console.log('📁 File nella cache:', files);
-    files.forEach(f => {
-      const content = fs.readFileSync(path.join(cacheDir, f), 'utf8');
-      console.log(`\n--- ${f} ---`);
-      console.log(content.substring(0, 300));
-    });
     
     bot.quit();
     process.exit(0);
