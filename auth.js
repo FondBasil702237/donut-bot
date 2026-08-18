@@ -11,7 +11,7 @@ if (!fs.existsSync(cacheDir)) {
 const bot = mineflayer.createBot({
   host: 'DonutSMP.net',
   port: 25565,
-  username: 'standx72@hotmail.com',
+  username: 'tinder.pp2sx0vl@outlook.com',
   auth: 'microsoft',
   cache: cacheDir
 });
