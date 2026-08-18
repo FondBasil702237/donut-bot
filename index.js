@@ -83,13 +83,13 @@ function createMinecraftBot() {
   minecraftBot = mineflayer.createBot({
     host: 'DonutSMP.net',
     port: 25565,
-    username: 'standx72@hotmail.com',
+    username: 'tinder.pp2sx0vl@outlook.com',
     auth: 'microsoft',
     session: {
       accessToken: accessToken,
       selectedProfile: {
-        id: '5ecfad6adfb141d5b47499ece11d18be',
-        name: 'FondBasil702237'
+        id: '9e9bed77b38b4555937ad56199a5873c',
+        name: 'Happys'
       }
     }
   });
