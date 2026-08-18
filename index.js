@@ -16,10 +16,8 @@ let antiAfkInterval = null;
 function startAntiAfk() {
   if (!minecraftBot) return;
 
-  // Ogni secondo: attacca il mob più vicino
   const swingInterval = setInterval(() => {
     if (!minecraftBot) return;
-    
     const entity = minecraftBot.nearestEntity((e) => e.type === 'mob');
     if (entity) {
       minecraftBot.attack(entity);
@@ -28,7 +26,6 @@ function startAntiAfk() {
     }
   }, 1000);
 
-  // Ogni 10 minuti: movimento + tasto 8 + RMB 4s + tasto 1
   const moveInterval = setInterval(() => {
     if (!minecraftBot) return;
     minecraftBot.setControlState('sneak', false);
@@ -88,8 +85,8 @@ function createMinecraftBot() {
     session: {
       accessToken: accessToken,
       selectedProfile: {
-        id: '9e9bed77b38b4555937ad56199a5873c',
-        name: 'Happys'
+        id: '5ecfad6adfb141d5b47499ece11d18be',
+        name: 'FondBasil702237'
       }
     }
   });
@@ -129,6 +126,7 @@ discordClient.once('ready', () => {
 
 discordClient.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+  // ⚠️ Sostituisci con l'ID del canale del tuo amico!
   if (message.channel.id !== '1509219275725082644') return;
 
   const cmd = message.content.toLowerCase().trim();
