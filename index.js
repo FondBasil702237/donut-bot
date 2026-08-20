@@ -1,6 +1,19 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const mineflayer = require('mineflayer');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+let sessionData = null;
+try {
+  const sessionPath = path.join(__dirname, 'session.json');
+  if (fs.existsSync(sessionPath)) {
+    sessionData = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+    console.log('✅ Sessione caricata');
+  }
+} catch (err) {
+  console.error('❌ Errore sessione:', err.message);
+}
 
 const discordClient = new Client({
   intents: [
@@ -11,107 +24,46 @@ const discordClient = new Client({
 });
 
 let minecraftBot = null;
-let antiAfkInterval = null;
-
-function startAntiAfk() {
-  if (!minecraftBot) return;
-
-  const swingInterval = setInterval(() => {
-    if (!minecraftBot) return;
-    const entity = minecraftBot.nearestEntity((e) => e.type === 'mob');
-    if (entity) {
-      minecraftBot.attack(entity);
-    } else {
-      minecraftBot.swingArm('left');
-    }
-  }, 1000);
-
-  const moveInterval = setInterval(() => {
-    if (!minecraftBot) return;
-    minecraftBot.setControlState('sneak', false);
-    const yaw = minecraftBot.entity.yaw;
-    minecraftBot.look((yaw + Math.PI) % (Math.PI * 2), 0);
-    minecraftBot.setControlState('forward', true);
-    setTimeout(() => {
-      if (!minecraftBot) return;
-      minecraftBot.setControlState('forward', false);
-      const yaw2 = minecraftBot.entity.yaw;
-      minecraftBot.look((yaw2 + Math.PI) % (Math.PI * 2), 0);
-      minecraftBot.setControlState('forward', true);
-      setTimeout(() => {
-        if (!minecraftBot) return;
-        minecraftBot.setControlState('forward', false);
-        minecraftBot.setQuickBarSlot(7);
-        minecraftBot.activateItem(true);
-        setTimeout(() => {
-          if (!minecraftBot) return;
-          minecraftBot.activateItem(false);
-          minecraftBot.setQuickBarSlot(0);
-          minecraftBot.setControlState('sneak', true);
-        }, 4000);
-      }, 200);
-    }, 200);
-  }, 10 * 60 * 1000);
-
-  antiAfkInterval = { swingInterval, moveInterval };
-}
-
-function stopAntiAfk() {
-  if (antiAfkInterval) {
-    clearInterval(antiAfkInterval.swingInterval);
-    clearInterval(antiAfkInterval.moveInterval);
-    antiAfkInterval = null;
-  }
-}
 
 function createMinecraftBot() {
   if (minecraftBot) {
     minecraftBot.quit();
     minecraftBot = null;
   }
-  stopAntiAfk();
 
-  const accessToken = process.env.MINECRAFT_TOKEN;
-  if (!accessToken) {
-    console.error('❌ MINECRAFT_TOKEN non impostato!');
-    return;
-  }
-
-  minecraftBot = mineflayer.createBot({
+  const botOptions = {
     host: 'DonutSMP.net',
     port: 25565,
-    username: 'tinder.pp2sx0vl@outlook.com',
+    username: 'standx72@hotmail.com',
     auth: 'microsoft',
-    session: {
-      accessToken: accessToken,
-      selectedProfile: {
-        id: '5ecfad6adfb141d5b47499ece11d18be',
-        name: 'FondBasil702237'
-      }
-    }
-  });
+  };
+
+  if (sessionData && sessionData.accessToken) {
+    botOptions.session = {
+      accessToken: sessionData.accessToken,
+      selectedProfile: sessionData.selectedProfile,
+    };
+  }
+
+  minecraftBot = mineflayer.createBot(botOptions);
 
   minecraftBot.once('spawn', () => {
     console.log('✅ Connesso a DonutSMP!');
     minecraftBot.setControlState('sneak', true);
-    startAntiAfk();
   });
 
   minecraftBot.on('end', () => {
-    console.log('Disconnesso');
-    stopAntiAfk();
+    console.log('Disconnesso da Minecraft');
     minecraftBot = null;
   });
 
   minecraftBot.on('error', (err) => {
     console.error('Errore MC:', err.message);
-    stopAntiAfk();
     minecraftBot = null;
   });
 }
 
 function disconnectMinecraftBot() {
-  stopAntiAfk();
   if (minecraftBot) {
     minecraftBot.quit();
     minecraftBot = null;
@@ -126,7 +78,6 @@ discordClient.once('ready', () => {
 
 discordClient.on('messageCreate', async (message) => {
   if (message.author.bot) return;
-  // ⚠️ Sostituisci con l'ID del canale del tuo amico!
   if (message.channel.id !== '1509219275725082644') return;
 
   const cmd = message.content.toLowerCase().trim();
